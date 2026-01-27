@@ -1,28 +1,34 @@
 package com.nipun.api_change_notifier;
 
-import java.io.File;
-
+import com.nipun.api_change_notifier.services.FileIteratingService;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-
-import com.nipun.api_change_notifier.services.FileIteratingService;
-import com.nipun.api_change_notifier.services.ParsingService;
+import java.io.File;
 
 @SpringBootApplication
-@EnableJpaAuditing
-public class ApiChangeNotifierApplication {
+public class ApiChangeNotifierApplication implements CommandLineRunner {
 
-	public static void main(String[] args) {
-		SpringApplication.run(ApiChangeNotifierApplication.class, args);
-		// ParsingService ps = new ParsingService();
-		// ps.parse();
+    private final FileIteratingService fileIteratingService;
 
-		FileIteratingService s = new FileIteratingService();
-		s.scanJavaFiles(new File("C:\\Users\\n" + //
-						"ipun\\Desktop\\spring boot\\n" + //
-						"ip"));
-	}
+    public ApiChangeNotifierApplication(FileIteratingService fileIteratingService) {
+        this.fileIteratingService = fileIteratingService;
+    }
 
+    public static void main(String[] args) {
+        SpringApplication.run(ApiChangeNotifierApplication.class, args);
+    }
+
+    @Override
+    public void run(String... args) throws Exception {
+        File projectDir = new File("C:\\Users\\nipun\\Desktop\\spring boot\\roadmap2");
+
+        long start = System.currentTimeMillis();
+        
+        fileIteratingService.processProject(projectDir);
+
+        long end = System.currentTimeMillis();
+        
+        System.out.println("Total time = " + (end - start) + "ms");
+    }
 }
- 
