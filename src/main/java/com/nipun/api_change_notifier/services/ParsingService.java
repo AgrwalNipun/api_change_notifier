@@ -1,19 +1,23 @@
 package com.nipun.api_change_notifier.services;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
-import com.github.javaparser.ast.body.Parameter;
+import com.nipun.api_change_notifier.models.Api;
+import com.nipun.api_change_notifier.models.Payload;
+import com.nipun.api_change_notifier.models.Response;
+import com.nipun.api_change_notifier.models.enums.Method;
 
 @Service
 public class ParsingService {
@@ -21,130 +25,204 @@ public class ParsingService {
     final List<String> mappingNames = List.of("GetMapping", "PostMapping", "PutMapping", "DeleteMapping",
             "PatchMapping");
 
-   public void parseForControllers(File file, Map<String, String> locations) {
-    try {
-        CompilationUnit parsed = StaticJavaParser.parse(file);
+    @Autowired
+    private ResponseService resService;
 
-        parsed.findAll(ClassOrInterfaceDeclaration.class).forEach(clas -> {
-            String basePath = clas.getAnnotationByName("RequestMapping")
-                .flatMap(a -> a.toSingleMemberAnnotationExpr().map(s -> s.getMemberValue().toString()))
-                .orElse("").replace("\"", "");
+    @Autowired
+    private PayloadService payloadSerivce;
 
-            for (String mappingName : mappingNames) {
-                clas.getMethods().forEach(method -> {
-                    method.getAnnotationByName(mappingName).ifPresent(methodAnnotations -> {
-                        
-                        // 1. Path Calculation
-                        String methodPath = methodAnnotations.toSingleMemberAnnotationExpr()
-                            .map(map -> map.getMemberValue().toString())
-                            .orElse("").replace("\"", "");
-                        String fullPath = basePath + methodPath;
+    public List<Api> parseForControllers(File file, Map<String, String> locations) {
 
-                        System.out.println("\n--- Endpoint: [" + mappingName + "] " + fullPath + " ---");
+        List<Api> apis = new ArrayList<>();
+        try {
+            CompilationUnit parsed = StaticJavaParser.parse(file);
 
-                        // 2. Separate Parameters: @RequestBody vs @RequestParam/others
-                        Map<String, Object> requestBodyMap = new HashMap<>();
-                        Map<String, Object> queryParamsMap = new HashMap<>();
+            parsed.findAll(ClassOrInterfaceDeclaration.class).forEach(clas -> {
+                String basePath = clas.getAnnotationByName("RequestMapping")
+                        .flatMap(a -> a.toSingleMemberAnnotationExpr().map(s -> s.getMemberValue().toString()))
+                        .orElse("").replace("\"", "");
 
-                        method.getParameters().forEach(param -> {
-                            String typeName = resolveBaseType(param.getType().asString());
-                            
-                            if (param.isAnnotationPresent("RequestBody")) {
-                                // This is the payload
-                                requestBodyMap.putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
-                            } else {
-                                // This is likely a Query Param or Path Variable
-                                if (locations.containsKey(typeName)) {
-                                    queryParamsMap.put(param.getNameAsString(), parseDtosRecursively(typeName, locations, new HashSet<>()));
+                for (String mappingName : mappingNames) {
+                    clas.getMethods().forEach(method -> {
+                        method.getAnnotationByName(mappingName).ifPresent(methodAnnotations -> {
+
+                            // 1. Path Calculation
+                            String methodPath = methodAnnotations.toSingleMemberAnnotationExpr()
+                                    .map(map -> map.getMemberValue().toString())
+                                    .orElse("").replace("\"", "");
+                            String fullPath = basePath + methodPath;
+
+                            System.out.println("\n--- Endpoint: [" + mappingName + "] " + fullPath + " ---");
+
+                            // 2. Separate Parameters: @RequestBody vs @RequestParam/others
+                            Map<String, Object> requestBodyMap = new HashMap<>();
+                            Map<String, Object> queryParamsMap = new HashMap<>();
+
+                            method.getParameters().forEach(param -> {
+                                String typeName = resolveBaseType(param.getType().asString());
+
+                                if (param.isAnnotationPresent("RequestBody")) {
+                                    // This is the payload
+                                    requestBodyMap.putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
                                 } else {
-                                    queryParamsMap.put(param.getNameAsString(), typeName);
+                                    // This is likely a Query Param or Path Variable
+                                    if (locations.containsKey(typeName)) {
+                                        queryParamsMap.put(param.getNameAsString(),
+                                                parseDtosRecursively(typeName, locations, new HashSet<>()));
+                                    } else {
+                                        queryParamsMap.put(param.getNameAsString(), typeName);
+                                    }
                                 }
-                            }
-                        });
+                            });
 
-                        // 3. Resolve Return Type
-                        String returnTypeStr = method.getType().asString();
-                        String finalDtoName = (returnTypeStr.contains("<?>") || returnTypeStr.equals("ResponseEntity")) 
-                                              ? resolveQuestionMark(method) 
-                                              : resolveBaseType(returnTypeStr);
+                            // 3. Resolve Return Type
+                            String returnTypeStr = method.getType().asString();
+                            String finalDtoName = (returnTypeStr.contains("<?>")
+                                    || returnTypeStr.equals("ResponseEntity"))
+                                            ? resolveQuestionMark(method)
+                                            : resolveBaseType(returnTypeStr);
 
-                        Map<String, Object> returnTypeMap = parseDtosRecursively(finalDtoName, locations, new HashSet<>());
+                            Map<String, Object> returnTypeMap = parseDtosRecursively(finalDtoName, locations,
+                                    new HashSet<>());
 
-                        // 4. Final Output
-                        System.out.println("URL PARAMS   : " + queryParamsMap);
-                        System.out.println("REQUEST BODY : " + requestBodyMap);
-                        System.out.println("RETURN TYPE  : " + returnTypeMap);
-                    });
-                });
-            }
-        });
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
-}
-
-
-public void parseForControllers2(File file, Map<String, String> locations) {
-    try {
-        CompilationUnit parsed = StaticJavaParser.parse(file);
-
-        parsed.findAll(ClassOrInterfaceDeclaration.class).forEach(clas -> {
-            String basePath = clas.getAnnotationByName("RequestMapping")
-                .flatMap(a -> a.toSingleMemberAnnotationExpr().map(s -> s.getMemberValue().toString()))
-                .orElse("").replace("\"", "");
-
-            for (String mappingName : mappingNames) {
-                clas.getMethods().forEach(method -> {
-                    method.getAnnotationByName(mappingName).ifPresent(methodAnnotations -> {
-                        
-                        // 1. Path Calculation
-                        String methodPath = methodAnnotations.toSingleMemberAnnotationExpr()
-                            .map(map -> map.getMemberValue().toString())
-                            .orElse("").replace("\"", "");
-                        String fullPath = basePath + methodPath;
-
-                        System.out.println("\n--- Endpoint: [" + mappingName + "] " + fullPath + " ---");
-
-                        // 2. Separate Parameters: @RequestBody vs @RequestParam/others
-                        Map<String, Object> requestBodyMap = new HashMap<>();
-                        Map<String, Object> queryParamsMap = new HashMap<>();
-
-                        method.getParameters().forEach(param -> {
-                            String typeName = resolveBaseType(param.getType().asString());
                             
-                            if (param.isAnnotationPresent("RequestBody")) {
-                                // This is the payload
-                                requestBodyMap.putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
-                            } else {
-                                // This is likely a Query Param or Path Variable
-                                if (locations.containsKey(typeName)) {
-                                    queryParamsMap.put(param.getNameAsString(), parseDtosRecursively(typeName, locations, new HashSet<>()));
-                                } else {
-                                    queryParamsMap.put(param.getNameAsString(), typeName);
-                                }
+                            ////saving body
+                            Payload payload = new Payload();
+                            
+                            payload.setBody(requestBodyMap);
+                            payload.setParams(queryParamsMap);
+                            
+
+                            // Payload resPayload = payloadSerivce.savePayload(payload);
+
+
+                            ///saving response        
+                            Response response = new Response();
+                            response.setBody(returnTypeMap);
+                            response.setStatusCode(0);
+                            // Response responseRet = resService.saveResponse(response);
+                            
+
+                            Api api = new Api();
+
+                            api.setPayload(payload);
+                            api.setResponse(response);
+                            //use mapping name and trim mapping from it and uppercase
+                            // String mappedString = mappingName.replaceAll("Mapping", "");
+                            switch (mappingName) {
+                                case "GetMapping":
+                                    api.setMethod(Method.GET);
+                                    break;
+                                case "PostMapping":
+                                    api.setMethod(Method.POST);
+                                    break;
+                                case "PutMapping":
+                                    api.setMethod(Method.PUT);
+                                    break;
+                                case "PatchMapping":
+                                    api.setMethod(Method.PATCH);
+                                    break;
+                                case "DeleteMapping":
+                                    api.setMethod(Method.DELETE);
+                                    break;
+                                default:
+                                    break;
                             }
+                            // api.setMethod(null);
+                            api.setEndPoint(fullPath);    
+                            
+                            
+                            System.out.println(api.getMethod()+"..........method.............");
+                            System.out.println(api.getEndPoint()+"////////////path////////////");    
+                            System.out.println(api.getPayload().getParams().toString()+"///////Params///////");    
+                            System.out.println(api.getResponse().getBody().toString()+"//////////////");    
+                            System.out.println(api.getPayload().getBody().toString()+"/////////////////////");
+
+                            apis.add(api);
+                            // // 4. Final Output
+                            // System.out.println("URL PARAMS   : " + queryParamsMap);
+                            // System.out.println("REQUEST BODY : " + requestBodyMap);
+                            // System.out.println("RETURN TYPE  : " + returnTypeMap);
                         });
-
-                        // 3. Resolve Return Type
-                        String returnTypeStr = method.getType().asString();
-                        String finalDtoName = (returnTypeStr.contains("<?>") || returnTypeStr.equals("ResponseEntity")) 
-                                              ? resolveQuestionMark(method) 
-                                              : resolveBaseType(returnTypeStr);
-
-                        Map<String, Object> returnTypeMap = parseDtosRecursively(finalDtoName, locations, new HashSet<>());
-
-                        // 4. Final Output
-                        System.out.println("URL PARAMS   : " + queryParamsMap);
-                        System.out.println("REQUEST BODY : " + requestBodyMap);
-                        System.out.println("RETURN TYPE  : " + returnTypeMap);
                     });
-                });
-            }
-        });
-    } catch (Exception e) {
-        e.printStackTrace();
+                }
+
+
+
+            });
+
+            return apis;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return apis;
+        }
     }
-}
+
+    public void parseForControllers2(File file, Map<String, String> locations) {
+        try {
+            CompilationUnit parsed = StaticJavaParser.parse(file);
+
+            parsed.findAll(ClassOrInterfaceDeclaration.class).forEach(clas -> {
+                String basePath = clas.getAnnotationByName("RequestMapping")
+                        .flatMap(a -> a.toSingleMemberAnnotationExpr().map(s -> s.getMemberValue().toString()))
+                        .orElse("").replace("\"", "");
+
+                for (String mappingName : mappingNames) {
+                    clas.getMethods().forEach(method -> {
+                        method.getAnnotationByName(mappingName).ifPresent(methodAnnotations -> {
+
+                            // 1. Path Calculation
+                            String methodPath = methodAnnotations.toSingleMemberAnnotationExpr()
+                                    .map(map -> map.getMemberValue().toString())
+                                    .orElse("").replace("\"", "");
+                            String fullPath = basePath + methodPath;
+
+                            System.out.println("\n--- Endpoint: [" + mappingName + "] " + fullPath + " ---");
+
+                            // 2. Separate Parameters: @RequestBody vs @RequestParam/others
+                            Map<String, Object> requestBodyMap = new HashMap<>();
+                            Map<String, Object> queryParamsMap = new HashMap<>();
+
+                            method.getParameters().forEach(param -> {
+                                String typeName = resolveBaseType(param.getType().asString());
+
+                                if (param.isAnnotationPresent("RequestBody")) {
+                                    // This is the payload
+                                    requestBodyMap.putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
+                                } else {
+                                    // This is likely a Query Param or Path Variable
+                                    if (locations.containsKey(typeName)) {
+                                        queryParamsMap.put(param.getNameAsString(),
+                                                parseDtosRecursively(typeName, locations, new HashSet<>()));
+                                    } else {
+                                        queryParamsMap.put(param.getNameAsString(), typeName);
+                                    }
+                                }
+                            });
+
+                            // 3. Resolve Return Type
+                            String returnTypeStr = method.getType().asString();
+                            String finalDtoName = (returnTypeStr.contains("<?>")
+                                    || returnTypeStr.equals("ResponseEntity"))
+                                            ? resolveQuestionMark(method)
+                                            : resolveBaseType(returnTypeStr);
+
+                            Map<String, Object> returnTypeMap = parseDtosRecursively(finalDtoName, locations,
+                                    new HashSet<>());
+
+                            // 4. Final Output
+                            System.out.println("URL PARAMS   : " + queryParamsMap);
+                            System.out.println("REQUEST BODY : " + requestBodyMap);
+                            System.out.println("RETURN TYPE  : " + returnTypeMap);
+                        });
+                    });
+                }
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private String resolveQuestionMark(com.github.javaparser.ast.body.MethodDeclaration method) {
         return method.getBody().map(body -> {
             List<com.github.javaparser.ast.stmt.ReturnStmt> returns = body
@@ -242,49 +320,51 @@ public void parseForControllers2(File file, Map<String, String> locations) {
         return returnType;
     }
 
- 
+    private Map<String, Object> parseDtosRecursively(String className, Map<String, String> locations,
+            Set<String> visited) {
+        Map<String, Object> currentClassFields = new HashMap<>();
 
-private Map<String, Object> parseDtosRecursively(String className, Map<String, String> locations, Set<String> visited) {
-    Map<String, Object> currentClassFields = new HashMap<>();
+        // If we don't have the source code, we can't parse it
+        String path = locations.get(className);
+        if (path == null)
+            return currentClassFields;
 
-    // If we don't have the source code, we can't parse it
-    String path = locations.get(className);
-    if (path == null) return currentClassFields;
+        // Prevent infinite recursion in the same branch
+        if (visited.contains(className))
+            return currentClassFields;
+        visited.add(className);
 
-    // Prevent infinite recursion in the same branch
-    if (visited.contains(className)) return currentClassFields;
-    visited.add(className);
+        try {
+            CompilationUnit cu = StaticJavaParser.parse(new File(path));
+            cu.getClassByName(className).ifPresent(clazz -> {
 
-    try {
-        CompilationUnit cu = StaticJavaParser.parse(new File(path));
-        cu.getClassByName(className).ifPresent(clazz -> {
-            
-            // 1. Process Fields (Composition)
-            clazz.getFields().forEach(field -> {
-                field.getVariables().forEach(var -> {
-                    String fieldName = var.getNameAsString();
-                    String fieldType = var.getTypeAsString();
-                    String resolvedType = resolveBaseType(fieldType);
+                // 1. Process Fields (Composition)
+                clazz.getFields().forEach(field -> {
+                    field.getVariables().forEach(var -> {
+                        String fieldName = var.getNameAsString();
+                        String fieldType = var.getTypeAsString();
+                        String resolvedType = resolveBaseType(fieldType);
 
-                    if (locations.containsKey(resolvedType)) {
-                        // Create a NEW visited set for the child call to allow 
-                        // the same DTO to appear in different branches
-                        currentClassFields.put(fieldName, parseDtosRecursively(resolvedType, locations, new HashSet<>(visited)));
-                    } else {
-                        currentClassFields.put(fieldName, fieldType);
-                    }
+                        if (locations.containsKey(resolvedType)) {
+                            // Create a NEW visited set for the child call to allow
+                            // the same DTO to appear in different branches
+                            currentClassFields.put(fieldName,
+                                    parseDtosRecursively(resolvedType, locations, new HashSet<>(visited)));
+                        } else {
+                            currentClassFields.put(fieldName, fieldType);
+                        }
+                    });
+                });
+
+                // 2. Process Inheritance
+                clazz.getExtendedTypes().forEach(extendedType -> {
+                    currentClassFields.putAll(parseDtosRecursively(extendedType.getNameAsString(), locations, visited));
                 });
             });
-
-            // 2. Process Inheritance
-            clazz.getExtendedTypes().forEach(extendedType -> {
-                currentClassFields.putAll(parseDtosRecursively(extendedType.getNameAsString(), locations, visited));
-            });
-        });
-    } catch (Exception e) {
-        System.err.println("Error reading " + className + ": " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("Error reading " + className + ": " + e.getMessage());
+        }
+        return currentClassFields;
     }
-    return currentClassFields;
-}
-    
+
 }

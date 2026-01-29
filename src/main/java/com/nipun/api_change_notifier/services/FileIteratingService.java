@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import com.nipun.api_change_notifier.models.Api;
+import com.nipun.api_change_notifier.models.Project;
+
 @Service
 public class FileIteratingService {
 
@@ -15,25 +20,44 @@ public class FileIteratingService {
     private final ParsingService parsingService;
     private final Map<String, String> fileLocations = new HashMap<>();
 
+    @Autowired
+    ProjectService projectService;
+
     public FileIteratingService(ParsingService parsingService) {
         this.parsingService = parsingService;
     }
 
     public void processProject(File rootDir) {
         List<File> allFiles = scanJavaFiles(rootDir);
-        
-        
+
+        List<Api> apis = new ArrayList<>();
+
         for (File file : allFiles) {
-            parsingService.parseForControllers(file, fileLocations);
+            apis.addAll(parsingService.parseForControllers(file, fileLocations));
         }
+
+        Project project = new Project();
+
+        project.setApis(apis);
+        project.setName("TEST");
+        project.setUsersEmail(new ArrayList<>(List.of("nipunagrawal500@gmail.com")));
+        for (Api api : apis) {
+            api.setProject(project);
+        }
+
+        projectService.saveProject(project);
+        // System.out.println();
+
     }
 
     private List<File> scanJavaFiles(File rootDir) {
         List<File> files = new ArrayList<>();
-        if (rootDir == null || !rootDir.exists()) return files;
+        if (rootDir == null || !rootDir.exists())
+            return files;
 
         File[] list = rootDir.listFiles();
-        if (list == null) return files;
+        if (list == null)
+            return files;
 
         for (File file : list) {
             if (file.isDirectory()) {

@@ -8,19 +8,22 @@ import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import lombok.Getter;
+import lombok.Setter;
 
 
 
+@Getter
+@Setter
 @Entity
 public class Response extends BaseEntity {
+   
     
-    int StatusCode;
-
-
+int StatusCode = 0;
     
 @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    Map<String,String> body;
+    Map<String,Object> body;
 
     
 @JdbcTypeCode(SqlTypes.JSON)

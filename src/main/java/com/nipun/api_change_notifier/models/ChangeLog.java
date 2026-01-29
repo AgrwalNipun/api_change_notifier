@@ -15,14 +15,18 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import lombok.Getter;
+import lombok.Setter;
 
+
+@Getter
+@Setter
 @Entity
 public class ChangeLog extends BaseEntity{
 
         
-    
-    UUID pastCommitId;
 
+    UUID pastCommitId;
     UUID currentCommitId;
 
 
@@ -33,17 +37,17 @@ public class ChangeLog extends BaseEntity{
 
     @ManyToOne
     @JoinColumn(name = "api_id")
-    private Apis api;
+    private Api api;
 
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    Map<String,String> pastValue;
+    Map<String,Object> pastValue;
     
     
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
-    Map<String,String> currentValue;
+    Map<String,Object> currentValue;
 
 
     

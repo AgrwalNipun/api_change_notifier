@@ -9,7 +9,13 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToMany;
+import lombok.Getter;
+import lombok.Setter;
 
+
+
+@Getter
+@Setter
 @Entity
 public class Project extends BaseEntity{
     
@@ -29,7 +35,7 @@ public class Project extends BaseEntity{
     List<Commit> commits;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    List<Apis> apis;
+    List<Api> apis;
 
 
 
