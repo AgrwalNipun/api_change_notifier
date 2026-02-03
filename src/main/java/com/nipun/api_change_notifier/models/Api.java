@@ -48,4 +48,9 @@ public class Api extends BaseEntity {
     @OneToMany(mappedBy = "api", cascade = CascadeType.ALL, orphanRemoval = true)
     List<ChangeLog> changes;
 
+    @Override
+    public String toString() {
+        return "Api [method=" + method + ", endPoint=" + endPoint + "]";
+    }
+
 }

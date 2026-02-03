@@ -26,14 +26,14 @@ public class ChangeLog extends BaseEntity{
 
         
 
-    UUID pastCommitId;
-    UUID currentCommitId;
-
-
+    String pastCommitId;
+    String currentCommitId;
 
 
     @Enumerated(EnumType.STRING)
     Status status;
+
+
 
     @ManyToOne
     @JoinColumn(name = "api_id")
@@ -49,6 +49,12 @@ public class ChangeLog extends BaseEntity{
     @Column(columnDefinition = "jsonb")
     Map<String,Object> currentValue;
 
+    
 
+    @Override
+    public String toString() {
+        return "ChangeLog [pastCommitId=" + pastCommitId + ", currentCommitId=" + currentCommitId + ", status=" + status
+                + ", api=" + api.toString() + ", pastValue=" + pastValue + ", currentValue=" + currentValue + "]";
+    }
     
 }

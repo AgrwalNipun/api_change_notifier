@@ -19,4 +19,12 @@ public class ProjectService {
         return repo.save(project);
     }
 
+    public Project projectExists(String githubId) {
+
+        Project project = repo.findByGithubId("123456789")
+                .orElse(new Project());
+
+        return project;
+    }
+
 }

@@ -27,7 +27,7 @@ public class FileIteratingService {
         this.parsingService = parsingService;
     }
 
-    public void processProject(File rootDir) {
+    public Project processProject(File rootDir) {
         List<File> allFiles = scanJavaFiles(rootDir);
 
         List<Api> apis = new ArrayList<>();
@@ -44,8 +44,8 @@ public class FileIteratingService {
         for (Api api : apis) {
             api.setProject(project);
         }
-
-        projectService.saveProject(project);
+        project.setGithubId(Long.toString((long) (Math.random() * 1000000)));
+        return projectService.saveProject(project);
         // System.out.println();
 
     }

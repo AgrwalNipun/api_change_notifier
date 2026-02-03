@@ -12,31 +12,24 @@ import jakarta.persistence.OneToMany;
 import lombok.Getter;
 import lombok.Setter;
 
-
-
 @Getter
 @Setter
 @Entity
-public class Project extends BaseEntity{
-    
+public class Project extends BaseEntity {
 
     String name;
-    
+
     @ElementCollection
-    @CollectionTable(
-        name = "project_users",
-        joinColumns = @JoinColumn(name = "project_id")
-    )
+    @CollectionTable(name = "project_users", joinColumns = @JoinColumn(name = "project_id"))
     @Column(name = "email")
     List<String> usersEmail;
-
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Commit> commits;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     List<Api> apis;
-
-
+    @Column(unique = true, nullable = false)
+    String githubId;
 
 }
