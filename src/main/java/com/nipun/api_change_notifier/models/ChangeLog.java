@@ -2,18 +2,19 @@ package com.nipun.api_change_notifier.models;
 
 
 import java.util.Map;
-import java.util.UUID;
-
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import com.nipun.api_change_notifier.converters.JsonMapConverter;
 import com.nipun.api_change_notifier.models.enums.Status;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import lombok.Getter;
 import lombok.Setter;
@@ -39,14 +40,16 @@ public class ChangeLog extends BaseEntity{
     @JoinColumn(name = "api_id")
     private Api api;
 
+@Convert(converter = JsonMapConverter.class)
+@Lob
+@Column(columnDefinition = "CLOB")
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
     Map<String,Object> pastValue;
     
-    
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
+@Convert(converter = JsonMapConverter.class)
+@Lob
+@Column(columnDefinition = "CLOB")
+
     Map<String,Object> currentValue;
 
     

@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.nipun.api_change_notifier.models.Api;
@@ -19,9 +18,6 @@ public class FileIteratingService {
     // Inject the service properly via constructor
     private final ParsingService parsingService;
     private final Map<String, String> fileLocations = new HashMap<>();
-
-    @Autowired
-    ProjectService projectService;
 
     public FileIteratingService(ParsingService parsingService) {
         this.parsingService = parsingService;
@@ -45,9 +41,7 @@ public class FileIteratingService {
             api.setProject(project);
         }
         project.setGithubId(Long.toString((long) (Math.random() * 1000000)));
-        return projectService.saveProject(project);
-        // System.out.println();
-
+        return project;
     }
 
     private List<File> scanJavaFiles(File rootDir) {

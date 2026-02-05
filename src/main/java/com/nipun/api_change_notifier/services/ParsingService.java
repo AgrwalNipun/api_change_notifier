@@ -24,7 +24,6 @@ public class ParsingService {
     final List<String> mappingNames = List.of("GetMapping", "PostMapping", "PutMapping", "DeleteMapping",
             "PatchMapping");
 
-
     public List<Api> parseForControllers(File file, Map<String, String> locations) {
 
         List<Api> apis = new ArrayList<>();
@@ -57,7 +56,12 @@ public class ParsingService {
 
                                 if (param.isAnnotationPresent("RequestBody")) {
                                     // This is the payload
-                                    requestBodyMap.putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
+                                    if (locations.containsKey(typeName)) {
+                                        requestBodyMap
+                                                .putAll(parseDtosRecursively(typeName, locations, new HashSet<>()));
+                                    } else if (isPrimitiveOrWrapper(typeName)) {
+                                        requestBodyMap.put("request_body_type", typeName);
+                                    }
                                 } else {
                                     // This is likely a Query Param or Path Variable
                                     if (locations.containsKey(typeName)) {
@@ -76,32 +80,35 @@ public class ParsingService {
                                             ? resolveQuestionMark(method)
                                             : resolveBaseType(returnTypeStr);
 
-                            Map<String, Object> returnTypeMap = parseDtosRecursively(finalDtoName, locations,
-                                    new HashSet<>());
+                            Map<String, Object> returnTypeMap;
+                            if (locations.containsKey(finalDtoName)) {
+                                returnTypeMap = parseDtosRecursively(finalDtoName, locations, new HashSet<>());
+                            } else {
+                                returnTypeMap = new HashMap<>();
+                                if (isPrimitiveOrWrapper(finalDtoName)) {
+                                    returnTypeMap.put("type", finalDtoName);
+                                }
+                            }
 
-                            
-                            ////saving body
+                            //// saving body
                             Payload payload = new Payload();
-                            
+
                             payload.setBody(requestBodyMap);
                             payload.setParams(queryParamsMap);
-                            
 
                             // Payload resPayload = payloadSerivce.savePayload(payload);
 
-
-                            ///saving response        
+                            /// saving response
                             Response response = new Response();
                             response.setBody(returnTypeMap);
                             response.setStatusCode(0);
                             // Response responseRet = resService.saveResponse(response);
-                            
 
                             Api api = new Api();
 
                             api.setPayload(payload);
                             api.setResponse(response);
-                            //use mapping name and trim mapping from it and uppercase
+                            // use mapping name and trim mapping from it and uppercase
                             // String mappedString = mappingName.replaceAll("Mapping", "");
                             switch (mappingName) {
                                 case "GetMapping":
@@ -123,25 +130,22 @@ public class ParsingService {
                                     break;
                             }
                             // api.setMethod(null);
-                            api.setEndPoint(fullPath);    
-                            
-                            
-                            System.out.println(api.getMethod()+"..........method.............");
-                            System.out.println(api.getEndPoint()+"////////////path////////////");    
-                            System.out.println(api.getPayload().getParams().toString()+"///////Params///////");    
-                            System.out.println(api.getResponse().getBody().toString()+"//////////////");    
-                            System.out.println(api.getPayload().getBody().toString()+"/////////////////////");
+                            api.setEndPoint(fullPath);
+
+                            System.out.println(api.getMethod() + "..........method.............");
+                            System.out.println(api.getEndPoint() + "////////////path////////////");
+                            System.out.println(api.getPayload().getParams().toString() + "///////Params///////");
+                            System.out.println(api.getResponse().getBody().toString() + "//////////////");
+                            System.out.println(api.getPayload().getBody().toString() + "/////////////////////");
 
                             apis.add(api);
                             // // 4. Final Output
-                            // System.out.println("URL PARAMS   : " + queryParamsMap);
+                            // System.out.println("URL PARAMS : " + queryParamsMap);
                             // System.out.println("REQUEST BODY : " + requestBodyMap);
-                            // System.out.println("RETURN TYPE  : " + returnTypeMap);
+                            // System.out.println("RETURN TYPE : " + returnTypeMap);
                         });
                     });
                 }
-
-
 
             });
 
@@ -359,6 +363,12 @@ public class ParsingService {
             System.err.println("Error reading " + className + ": " + e.getMessage());
         }
         return currentClassFields;
+    }
+
+    private boolean isPrimitiveOrWrapper(String type) {
+        return List.of("int", "long", "double", "float", "boolean", "char", "byte", "short",
+                "Integer", "Long", "Double", "Float", "Boolean", "Character", "Byte", "Short",
+                "String", "void", "Void").contains(type);
     }
 
 }

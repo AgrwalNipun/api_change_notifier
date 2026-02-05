@@ -8,9 +8,7 @@ import org.springframework.stereotype.Service;
 
 import com.nipun.api_change_notifier.models.Api;
 import com.nipun.api_change_notifier.models.ChangeLog;
-import com.nipun.api_change_notifier.models.Payload;
 import com.nipun.api_change_notifier.models.Project;
-import com.nipun.api_change_notifier.models.Response;
 import com.nipun.api_change_notifier.models.enums.Status;
 
 @Service
@@ -19,14 +17,22 @@ public class ChangeDetectorService {
     @Autowired
     private FileIteratingService fileIteratingService;
 
+    public List<ChangeLog> getChanges(String a, String b) {
 
-    public List<ChangeLog> getChanges() {      
-
-        File projectDir = new File("C:\\Users\\nipun\\Desktop\\spring boot\\roadmap2");
-        File projectDir2 = new File("C:\\Users\\nipun\\Desktop\\roadmap2");
+        File projectDir = new File(a);
+        File projectDir2 = new File(b);
 
         Project oldProject = fileIteratingService.processProject(projectDir);
         Project newProject = fileIteratingService.processProject(projectDir2);
+
+        oldProject.setGithubId("123");
+        newProject.setGithubId("456");
+
+        System.out.println("---------- OLD PROJECT ----------");
+        printProject(oldProject);
+
+        System.out.println("---------- NEW PROJECT ----------");
+        printProject(newProject);
 
         List<ChangeLog> changes = new ArrayList<>();
 
@@ -37,18 +43,17 @@ public class ChangeDetectorService {
         for (String key : newApiMap.keySet()) {
             Api newApi = newApiMap.get(key);
 
-            if (!oldApiMap.containsKey(key)) {
+            if (oldApiMap.containsKey(key)) {
+                compareApis(oldApiMap.get(key), newApi, changes);
+            } else {
                 ChangeLog log = new ChangeLog();
                 log.setStatus(Status.ADDED);
                 log.setApi(newApi);
                 log.setPastValue(null);
                 log.setCurrentValue(Map.of(
                         "method", newApi.getMethod(),
-                        "path", newApi.getEndPoint()
-                ));
+                        "path", newApi.getEndPoint()));
                 changes.add(log);
-            } else {
-                compareApis(oldApiMap.get(key), newApi, changes);
             }
         }
 
@@ -62,48 +67,81 @@ public class ChangeDetectorService {
                 log.setApi(oldApi);
                 log.setPastValue(Map.of(
                         "method", oldApi.getMethod(),
-                        "path", oldApi.getEndPoint()
-                ));
+                        "path", oldApi.getEndPoint()));
                 log.setCurrentValue(null);
                 changes.add(log);
             }
         }
 
+        System.out.println("---------- CHANGES ----------");
+        for (ChangeLog log : changes) {
+            System.out.println(log.getApi().getEndPoint() + "////////////////");
+            ;
+            System.out.println(log);
+        }
+
         return changes;
+    }
+
+    private void printProject(Project project) {
+        System.out.println("Project Name: " + project.getName());
+        if (project.getApis() != null) {
+            for (Api api : project.getApis()) {
+                System.out.println("API: " + api.getMethod() + " " + api.getEndPoint());
+                if (api.getPayload() != null) {
+                    System.out.println("  Payload: " + api.getPayload().getBody());
+                    System.out.println("  Params: " + api.getPayload().getParams());
+                }
+                if (api.getResponse() != null) {
+                    System.out.println("  Response: " + api.getResponse().getBody());
+                }
+            }
+        }
     }
 
     /* ------------------- API LEVEL ------------------- */
 
     private void compareApis(Api oldApi, Api newApi, List<ChangeLog> changes) {
+        System.out.println("Comparing API: " + oldApi.getMethod() + " " + oldApi.getEndPoint());
 
+        // Compare Request Body
         compareScope(
-                oldApi.getPayload(),
-                newApi.getPayload(),
-                "REQUEST",
+                oldApi.getPayload() != null ? oldApi.getPayload().getBody() : Collections.emptyMap(),
+                newApi.getPayload() != null ? newApi.getPayload().getBody() : Collections.emptyMap(),
+                "REQUEST_BODY",
                 oldApi,
-                changes
-        );
+                changes);
 
+        // Compare Request Params
         compareScope(
-                oldApi.getResponse(),
-                newApi.getResponse(),
-                "RESPONSE",
+                oldApi.getPayload() != null ? oldApi.getPayload().getParams() : Collections.emptyMap(),
+                newApi.getPayload() != null ? newApi.getPayload().getParams() : Collections.emptyMap(),
+                "REQUEST_PARAMS",
                 oldApi,
-                changes
-        );
+                changes);
+
+        // Compare Response Body
+        compareScope(
+                oldApi.getResponse() != null ? oldApi.getResponse().getBody() : Collections.emptyMap(),
+                newApi.getResponse() != null ? newApi.getResponse().getBody() : Collections.emptyMap(),
+                "RESPONSE_BODY",
+                oldApi,
+                changes);
     }
 
     /* ------------------- SCOPE LEVEL (AGGREGATED) ------------------- */
 
     private void compareScope(
-            Object oldObj,
-            Object newObj,
+            Map<String, Object> oldMap,
+            Map<String, Object> newMap,
             String scope,
             Api api,
             List<ChangeLog> changes) {
 
-        Map<String, Object> oldMap = safeMap(oldObj);
-        Map<String, Object> newMap = safeMap(newObj);
+        if (oldMap == null)
+            oldMap = Collections.emptyMap();
+        if (newMap == null)
+            newMap = Collections.emptyMap();
 
         Map<String, Object> added = new HashMap<>();
         Map<String, Object> removed = new HashMap<>();
@@ -133,22 +171,22 @@ public class ChangeDetectorService {
             }
         }
 
-        // Emit max 3 logs per scope
-        if (!added.isEmpty()) {
-            changes.add(buildLog(Status.ADDED, api, null, wrap(scope, added)));
-        }
+        // Consolidate all changes into one log if any exist
+        if (!added.isEmpty() || !removed.isEmpty() || !modifiedOld.isEmpty()) {
+            System.out.println("Changes detected in scope: " + scope + " for API: " + api.getEndPoint());
+            Map<String, Object> pastState = new HashMap<>();
+            pastState.putAll(removed);
+            pastState.putAll(modifiedOld);
 
-        if (!removed.isEmpty()) {
-            changes.add(buildLog(Status.REMOVED, api, wrap(scope, removed), null));
-        }
+            Map<String, Object> currentState = new HashMap<>();
+            currentState.putAll(added);
+            currentState.putAll(modifiedNew);
 
-        if (!modifiedOld.isEmpty()) {
             changes.add(buildLog(
                     Status.CHANGED,
                     api,
-                    wrap(scope, modifiedOld),
-                    wrap(scope, modifiedNew)
-            ));
+                    wrap(scope, pastState),
+                    wrap(scope, currentState)));
         }
     }
 
@@ -162,6 +200,7 @@ public class ChangeDetectorService {
 
         ChangeLog log = new ChangeLog();
         log.setStatus(status);
+
         log.setApi(api);
         log.setPastValue(past);
         log.setCurrentValue(current);
@@ -175,18 +214,11 @@ public class ChangeDetectorService {
     private Map<String, Api> mapApis(List<Api> apis) {
         Map<String, Api> map = new HashMap<>();
         for (Api api : apis) {
-            map.put(api.getMethod() + " " + api.getEndPoint(), api);
+            String method = api.getMethod() != null ? api.getMethod().toString().trim().toUpperCase() : "";
+            String endPoint = api.getEndPoint() != null ? api.getEndPoint().trim() : "";
+            map.put(method + " " + endPoint, api);
         }
         return map;
     }
 
-    private Map<String, Object> safeMap(Object obj) {
-        if (obj instanceof Payload p && p.getBody() != null) {
-            return p.getBody();
-        }
-        if (obj instanceof Response r && r.getBody() != null) {
-            return r.getBody();
-        }
-        return Collections.emptyMap();
-    }
 }
