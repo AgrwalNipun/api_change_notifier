@@ -25,17 +25,17 @@ public class ApiChangeNotifierApplication implements CommandLineRunner {
         String fileAfter = null;
 
         for (int i = 0; i < args.length; i++) {
-            if ("--file_before".equals(args[i]) && i + 1 < args.length) {
+            if ("--head-path".equals(args[i]) && i + 1 < args.length) {
                 fileBefore = args[i + 1];
             }
-            if ("--file_after".equals(args[i]) && i + 1 < args.length) {
+            if ("--base-path".equals(args[i]) && i + 1 < args.length) {
                 fileAfter = args[i + 1];
             }
         }
 
         if (fileBefore == null || fileAfter == null) {
             throw new IllegalArgumentException(
-                "Missing required inputs: --file_before and --file_after"
+                "Missing required inputs: --head-path and --base-path"
             );
         }
 
