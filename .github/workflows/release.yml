@@ -24,7 +24,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-
+      - name: Make mvnw executable
+        run: chmod +x ./mvnw
       # Automatically updates your pom.xml to match the input version
       - name: Update Maven Version
         run: ./mvnw versions:set -DnewVersion=${{ inputs.version_tag }} -DgenerateBackupPoms=false
