@@ -2,16 +2,24 @@ name: Test API Change Notifier
 
 on:
   push:
+    branches: [ "main" ]
   pull_request:
+    branches: [ "main" ]
+  workflow_dispatch: # Gives you a "Run workflow" button in the GitHub Actions UI
 
 jobs:
-  test:
+  test-custom-action:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+      # 1. Checkout the repository code
+      # This is required so your JAR has actual project files to analyze
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - uses: ./
+      # 2. Run your custom action
+      # The './' tells GitHub to look for the 'action.yml' file in the root of THIS repository
+      - name: Run API Notifier
+        uses: ./
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          target-dir: ${{ github.workspace }} # Passes the root of your checked-out code
+          version: 'v1.0.0' # Matches the tag of the Release where your 60MB JAR is uploaded

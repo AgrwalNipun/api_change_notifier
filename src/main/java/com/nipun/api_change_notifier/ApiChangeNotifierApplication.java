@@ -21,27 +21,31 @@ public class ApiChangeNotifierApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
-        String fileBefore = null;
-        String fileAfter = null;
+
+
+        String base = null;
+        String head = null;
 
         for (int i = 0; i < args.length; i++) {
             if ("--head-path".equals(args[i]) && i + 1 < args.length) {
-                fileBefore = args[i + 1];
+                head = args[i + 1];
             }
             if ("--base-path".equals(args[i]) && i + 1 < args.length) {
-                fileAfter = args[i + 1];
+                base = args[i + 1];
             }
         }
 
-        if (fileBefore == null || fileAfter == null) {
-            throw new IllegalArgumentException(
-                "Missing required inputs: --head-path and --base-path"
-            );
+        if (base == null || head == null) {
+            head = "C:\\Users\\nipun\\Desktop\\roadmap2";
+            base = "C:\\Users\\nipun\\Desktop\\spring boot\\roadmap2";
+            // throw new IllegalArgumentException(
+            //     "Missing required inputs: --head-path and --base-path"
+            // );
         }
 
         long start = System.currentTimeMillis();
 
-        changeDetectorService.getChanges(fileBefore, fileAfter);
+        changeDetectorService.getChanges(base,head);
 
         long end = System.currentTimeMillis();
 
