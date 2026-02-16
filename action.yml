@@ -9,7 +9,7 @@ inputs:
   version:
     description: 'Version of the notifier to run'
     required: true
-    default: 'v1.0.0'
+    default: 'v1.0.3'
 
 runs:
   using: 'composite'

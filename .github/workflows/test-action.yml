@@ -22,4 +22,4 @@ jobs:
         uses: ./
         with:
           target-dir: ${{ github.workspace }} # Passes the root of your checked-out code
-          version: 'v1.0.0' # Matches the tag of the Release where your 60MB JAR is uploaded
+          version: 'v1.0.3' # Matches the tag of the Release where your 60MB JAR is uplo   aded
