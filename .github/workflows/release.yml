@@ -1,16 +1,20 @@
-name: Build and Publish Release
+name: Manual Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*' # Only runs when you push a tag like v1.0.0, v1.1.0, etc.
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Version tag to release (e.g., v1.0.1)'
+        required: true
+        type: string
+        default: 'v1.0.1'
+
+permissions:
+  contents: write # Required to publish the release
 
 jobs:
-  release-jar:
+  manual-release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # Crucial: Allows the action to create a GitHub Release
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,18 +24,20 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'maven' # Speeds up dependency resolution
 
-      - name: Grant execute permission for mvnw
-        run: chmod +x ./mvnw
+      # Automatically updates your pom.xml to match the input version
+      - name: Update Maven Version
+        run: ./mvnw versions:set -DnewVersion=${{ inputs.version_tag }} -DgenerateBackupPoms=false
 
+      # Builds your 60MB JAR
       - name: Build the Fat JAR
-        # Builds the project and skips tests to save time
         run: ./mvnw clean package -DskipTests
 
-      - name: Upload to GitHub Releases
-        uses: softprops/action-gh-release@v2
+      # Creates the release using the version you typed into the UI
+      - name: Create a GitHub Release
+        uses: ncipollo/release-action@v1
         with:
-          # Points to the compiled 60MB JAR (adjust 'target/' if using Gradle)
-          files: target/api-change-notifier.jar 
-          generate_release_notes: true
+          tag: ${{ inputs.version_tag }}
+          name: Release ${{ inputs.version_tag }}
+          artifacts: "target/*.jar"
+          token: ${{ secrets.GITHUB_TOKEN }}
