@@ -2,9 +2,6 @@ package com.nipun.api_change_notifier.models;
 
 
 import java.util.Map;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import com.nipun.api_change_notifier.converters.JsonMapConverter;
 import com.nipun.api_change_notifier.models.enums.Status;
 

@@ -1,59 +1,26 @@
-name: "API Change Notifier"
-description: "Detect API changes by statically analyzing source code between commits"
-author: "Nipun"
-
-branding:
-  icon: "activity"
-  color: "blue"
+name: 'API Change Notifier'
+description: 'Analyzes project files for API changes'
 
 inputs:
-  github-token:
-    description: "GitHub token used to access repository data"
+  target-dir:
+    description: 'Path to the project files'
     required: true
-
-  base-ref:
-    description: "Base git ref to compare from (default: previous commit)"
-    required: false
-    default: "HEAD~1"
-
-  head-ref:
-    description: "Head git ref to compare to (default: latest commit)"
-    required: false
-    default: "HEAD"
-
-  repo-path:
-    description: "Path to the repository (usually the GitHub workspace)"
-    required: false
-    default: "."
-
-  fail-on-change:
-    description: "Fail the action if API changes are detected"
-    required: false
-    default: "false"
-
-  file_before:
-    description: "Path to previous version file"
-    required: false
-
-  file_after:
-    description: "Path to current version file"
-    required: false
-
-outputs:
-  api-changes-detected:
-    description: "Whether API changes were detected (true/false)"
-
-  changes-summary:
-    description: "Short summary of detected API changes"
+    default: '.'
+  version:
+    description: 'Version of the notifier to run'
+    required: true
+    default: 'v1.0.0'
 
 runs:
-  using: "docker"
-  image: "Dockerfile"
-  env:
-    GITHUB_TOKEN: ${{ inputs.github-token }}
-    BASE_REF: ${{ inputs.base-ref }}
-    HEAD_REF: ${{ inputs.head-ref }}
-    REPO_PATH: ${{ inputs.repo-path }}
-    FAIL_ON_CHANGE: ${{ inputs.fail-on-change }}
-    FILE_BEFORE: ${{ inputs.file_before }}
-    FILE_AFTER: ${{ inputs.file_after }}
+  using: 'composite'
+  steps:
+    - name: Download the JAR from Releases
+      shell: bash
+      # Downloads the JAR file directly to the action's working path
+      run: |
+        curl -sL -o ${{ github.action_path }}/notifier.jar \
+        https://github.com/AgrwalNipun/api_change_notifier/releases/download/${{ inputs.version }}/api-change-notifier.jar
+
+    - name: Execute the JAR
+      shell: bash
+      run: java -jar ${{ github.action_path }}/notifier.jar ${{ inputs.target-dir }}
