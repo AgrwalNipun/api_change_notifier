@@ -1,6 +1,10 @@
 package com.nipun.api_change_notifier;
 
-import com.nipun.api_change_notifier.services.ChangeDetectorService;
+import java.io.File;
+
+import com.nipun.api_change_notifier.models.Api;
+import com.nipun.api_change_notifier.models.Project;
+import com.nipun.api_change_notifier.services.FileIteratingService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -8,10 +12,10 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class ApiChangeNotifierApplication implements CommandLineRunner {
 
-    private final ChangeDetectorService changeDetectorService;
+    private final FileIteratingService fileIteratingService;
 
-    public ApiChangeNotifierApplication(ChangeDetectorService changeDetectorService) {
-        this.changeDetectorService = changeDetectorService;
+    public ApiChangeNotifierApplication(FileIteratingService fileIteratingService) {
+        this.fileIteratingService = fileIteratingService;
     }
 
     public static void main(String[] args) {
@@ -21,34 +25,31 @@ public class ApiChangeNotifierApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
-
-
-        String base = null;
-        String head = null;
-
-        for (int i = 0; i < args.length; i++) {
-            if ("--head-path".equals(args[i]) && i + 1 < args.length) {
-                head = args[i + 1];
-            }
-            if ("--base-path".equals(args[i]) && i + 1 < args.length) {
-                base = args[i + 1];
-            }
+        if (args.length == 0 || args[0].isBlank()) {
+            System.err.println("❌ No target directory provided.");
+            System.err.println("Usage: java -jar notifier.jar <path-to-project>");
+            System.exit(1);
         }
 
-        if (base == null || head == null) {
-            head = "C:\\Users\\nipun\\Desktop\\roadmap2";
-            base = "C:\\Users\\nipun\\Desktop\\spring boot\\roadmap2";
-            // throw new IllegalArgumentException(
-            //     "Missing required inputs: --head-path and --base-path"
-            // );
+        String targetDir = args[0];
+        System.out.println("🔍 Scanning project at: " + targetDir);
+
+        File dir = new File(targetDir);
+        if (!dir.exists() || !dir.isDirectory()) {
+            System.err.println("❌ Path does not exist or is not a directory: " + targetDir);
+            System.exit(1);
         }
 
         long start = System.currentTimeMillis();
 
-        changeDetectorService.getChanges(base,head);
+        Project project = fileIteratingService.processProject(dir);
+
+        System.out.println("\n✅ Scan complete. Found " + project.getApis().size() + " API endpoint(s):");
+        for (Api api : project.getApis()) {
+            System.out.println("  [" + api.getMethod() + "] " + api.getEndPoint());
+        }
 
         long end = System.currentTimeMillis();
-
-        System.out.println("Total time = " + (end - start) + "ms");
+        System.out.println("\n⏱ Total time = " + (end - start) + "ms");
     }
 }
