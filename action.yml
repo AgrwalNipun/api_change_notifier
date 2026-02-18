@@ -10,17 +10,26 @@ inputs:
     description: 'Version of the notifier to run'
     required: true
     default: 'v1.0.3'
-
 runs:
   using: 'composite'
   steps:
     - name: Download the JAR from Releases
       shell: bash
-      # Downloads the JAR file directly to the action's working path
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
-        curl -sL -o ${{ github.action_path }}/notifier.jar \
-        https://github.com/AgrwalNipun/api_change_notifier/releases/download/${{ inputs.version }}/api-change-notifier.jar
+        # 1. Use the gh tool to download the asset specifically
+        # This is safer than curl for private or public repos
+        gh release download ${{ inputs.version }} \
+          --repo AgrwalNipun/api_change_notifier \
+          --pattern "api-change-notifier.jar" \
+          --dir "${{ github.action_path }}"
+
+        # 2. Rename it to a standard name for the next step
+        mv "${{ github.action_path }}/api-change-notifier.jar" "${{ github.action_path }}/notifier.jar"
 
     - name: Execute the JAR
       shell: bash
-      run: java -jar ${{ github.action_path }}/notifier.jar ${{ inputs.target-dir }}
+      run: |
+        # Use quotes to handle paths with spaces safely
+        java -jar "${{ github.action_path }}/notifier.jar" "${{ inputs.target-dir }}"
