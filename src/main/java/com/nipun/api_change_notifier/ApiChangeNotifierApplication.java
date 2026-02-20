@@ -5,6 +5,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import com.github.javaparser.ParserConfiguration;
+import com.github.javaparser.StaticJavaParser;
 import com.nipun.api_change_notifier.models.Api;
 import com.nipun.api_change_notifier.models.Commit;
 import com.nipun.api_change_notifier.models.Project;
@@ -32,6 +34,14 @@ public class ApiChangeNotifierApplication implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+
+
+
+ParserConfiguration configuration = new ParserConfiguration();
+configuration.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17); 
+// or JAVA_14 minimum
+
+StaticJavaParser.setConfiguration(configuration);
 
         if (args.length < 4) {
             System.err.println("❌ Invalid arguments provided.");
