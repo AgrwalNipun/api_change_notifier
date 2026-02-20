@@ -2,9 +2,9 @@ name: Test API Change Notifier
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch: # Gives you a "Run workflow" button in the GitHub Actions UI
 
 jobs:
@@ -22,4 +22,7 @@ jobs:
         uses: ./
         with:
           target-dir: ${{ github.workspace }} # Passes the root of your checked-out code
-          version: 'v1.0.7' # Matches the tag of the Release where your 60MB JAR is uplo   aded
+          version: "v1.0.7" # Matches the tag of the Release where your 60MB JAR is uplo   aded
+          repoID: "test-repo-id"
+          commitID: ${{ github.sha }}
+          emails: "nipunagrawal500@gmail.com"

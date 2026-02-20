@@ -1,17 +1,26 @@
-name: 'API Change Notifier'
-description: 'Analyzes project files for API changes'
+name: "API Change Notifier"
+description: "Analyzes project files for API changes"
 
 inputs:
   target-dir:
-    description: 'Path to the project files'
+    description: "Path to the project files"
     required: true
-    default: '.'
+    default: "."
   version:
-    description: 'Version of the notifier to run'
+    description: "Version of the notifier to run"
     required: true
-    default: 'v1.0.6'
+    default: "v1.0.7"
+  repoID:
+    description: "Repository ID"
+    required: true
+  commitID:
+    description: "Commit ID"
+    required: true
+  emails:
+    description: "Comma-separated list of user emails"
+    required: true
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Download the JAR from Releases
       shell: bash
@@ -32,4 +41,4 @@ runs:
       shell: bash
       run: |
         # Use quotes to handle paths with spaces safely
-        java -jar "${{ github.action_path }}/notifier.jar" "${{ inputs.target-dir }}"
+        java -jar "${{ github.action_path }}/notifier.jar" "${{ inputs.target-dir }}" "${{ inputs.repoID }}" "${{ inputs.commitID }}" "${{ inputs.emails }}"
