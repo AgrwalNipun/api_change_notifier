@@ -2,9 +2,9 @@ name: Test API Change Notifier
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch: # Gives you a "Run workflow" button in the GitHub Actions UI
 
 jobs:
