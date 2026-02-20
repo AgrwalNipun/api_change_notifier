@@ -33,14 +33,11 @@ public class FileIteratingService {
         }
 
         Project project = new Project();
-
         project.setApis(apis);
-        project.setName("TEST");
-        project.setUsersEmail(new ArrayList<>(List.of("nipunagrawal500@gmail.com")));
+
         for (Api api : apis) {
             api.setProject(project);
         }
-        project.setGithubId(Long.toString((long) (Math.random() * 1000000)));
         return project;
     }
 
