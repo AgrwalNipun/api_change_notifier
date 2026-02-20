@@ -12,6 +12,7 @@ public class Commit extends BaseEntity {
     Project project;
     String author;
     String commitName;
+    String commitId;
     LocalDateTime commitedAt;
 
 }
