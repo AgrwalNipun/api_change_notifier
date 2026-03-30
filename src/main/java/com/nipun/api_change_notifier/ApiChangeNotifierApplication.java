@@ -35,13 +35,11 @@ public class ApiChangeNotifierApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
 
+        ParserConfiguration configuration = new ParserConfiguration();
+        configuration.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17);
+        // or JAVA_14 minimum
 
-
-ParserConfiguration configuration = new ParserConfiguration();
-configuration.setLanguageLevel(ParserConfiguration.LanguageLevel.JAVA_17); 
-// or JAVA_14 minimum
-
-StaticJavaParser.setConfiguration(configuration);
+        StaticJavaParser.setConfiguration(configuration);
 
         if (args.length < 4) {
             System.err.println("❌ Invalid arguments provided.");
@@ -69,8 +67,11 @@ StaticJavaParser.setConfiguration(configuration);
         }
 
         long start = System.currentTimeMillis();
+        
+        // Scan for APIs
+        List<Api> detectedApis = fileIteratingService.scanForApis(dir);
 
-        Project project = fileIteratingService.processProject(dir);
+        Project project = new Project();
         project.setGithubId(repoID);
         project.setUsersEmail(userEmails);
         project.setName(dir.getName());
@@ -78,15 +79,22 @@ StaticJavaParser.setConfiguration(configuration);
         Commit commit = new Commit();
         commit.setCommitId(commitID);
         commit.setProject(project);
+        commit.setApis(detectedApis);
+        
+        // Link APIs to the commit
+        for (Api api : detectedApis) {
+            api.setCommit(commit);
+        }
+
         project.setCommits(new ArrayList<>(List.of(commit)));
 
-        System.out.println("\n✅ Scan complete. Found " + project.getApis().size() + " API endpoint(s):");
-        for (Api api : project.getApis()) {
+        System.out.println("\n✅ Scan complete. Found " + detectedApis.size() + " API endpoint(s):");
+        for (Api api : detectedApis) {
             System.out.println("  [" + api.getMethod() + "] " + api.getEndPoint());
         }
 
-        // POST detected endpoints to the external receiver
-        notifierService.postEndpoints(project.getApis(), project);
+        // POST detected data to the external receiver
+        notifierService.postEndpoints(detectedApis, project);
 
         long end = System.currentTimeMillis();
         System.out.println("\n⏱ Total time = " + (end - start) + "ms");

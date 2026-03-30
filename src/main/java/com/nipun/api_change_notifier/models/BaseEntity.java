@@ -10,10 +10,10 @@ import lombok.Setter;
 @Setter
 public abstract class BaseEntity {
 
-    UUID id = UUID.randomUUID();
+    UUID id;
 
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt;
 
 }
