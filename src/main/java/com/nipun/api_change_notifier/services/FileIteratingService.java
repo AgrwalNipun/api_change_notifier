@@ -10,7 +10,6 @@ import java.util.Optional;
 import org.springframework.stereotype.Service;
 
 import com.nipun.api_change_notifier.models.Api;
-import com.nipun.api_change_notifier.models.Project;
 
 @Service
 public class FileIteratingService {
@@ -23,7 +22,7 @@ public class FileIteratingService {
         this.parsingService = parsingService;
     }
 
-    public Project processProject(File rootDir) {
+    public List<Api> scanForApis(File rootDir) {
         List<File> allFiles = scanJavaFiles(rootDir);
 
         List<Api> apis = new ArrayList<>();
@@ -32,13 +31,7 @@ public class FileIteratingService {
             apis.addAll(parsingService.parseForControllers(file, fileLocations));
         }
 
-        Project project = new Project();
-        project.setApis(apis);
-
-        for (Api api : apis) {
-            api.setProject(project);
-        }
-        return project;
+        return apis;
     }
 
     private List<File> scanJavaFiles(File rootDir) {

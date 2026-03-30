@@ -12,7 +12,6 @@ public class Project extends BaseEntity {
     String name;
     List<String> usersEmail;
     List<Commit> commits;
-    List<Api> apis;
     String githubId;
 
 }

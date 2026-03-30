@@ -8,14 +8,6 @@ import com.nipun.api_change_notifier.models.Project;
 public class ProjectService {
 
     public Project saveProject(Project project) {
-        if (project.getName() == null)
-            throw new IllegalArgumentException("Cannot create a project without name");
-
-        System.out.println("---------- PROJECT ----------");
-        System.out.println("Name      : " + project.getName());
-        System.out.println("Github ID : " + project.getGithubId());
-        System.out.println("APIs      : " + project.getApis());
-
         return project;
     }
 

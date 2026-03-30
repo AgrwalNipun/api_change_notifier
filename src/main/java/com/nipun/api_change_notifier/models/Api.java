@@ -12,12 +12,11 @@ import lombok.Setter;
 @Setter
 public class Api extends BaseEntity {
 
-    @JsonIgnore
-    Project project;
     Method method;
     Payload payload;
     Response response;
-    Commit lastCommit;
+    @JsonIgnore
+    Commit commit;
     String endPoint;
     List<ChangeLog> changes;
 

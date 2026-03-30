@@ -20,7 +20,6 @@ public class NotifierService {
     }
 
     public void postEndpoints(List<Api> apis, Project project) {
-        project.setApis(apis);
 
         System.out.println("📤 Sending project \"" + project.getName() + "\" with " + apis.size() + " endpoint(s) to "
                 + TARGET_URL);
